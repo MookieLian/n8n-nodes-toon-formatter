@@ -1,4 +1,4 @@
-# n8n-nodes-toon
+# n8n-nodes-toon-formatter
 
 This package ships a single community node for [n8n](https://n8n.io/) that converts JSON payloads into the compact [TOON format](https://toonformat.dev/docs). The node only surfaces the required `Input JSON` parameter and returns the formatted string under the `toon` key for every output item.
 
