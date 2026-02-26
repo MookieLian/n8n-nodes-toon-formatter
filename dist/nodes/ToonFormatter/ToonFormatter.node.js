@@ -117,16 +117,51 @@ class ToonFormatter {
             usableAsTool: true,
             properties: [
                 {
-                    displayName: 'Input JSON',
-                    name: 'inputJson',
-                    type: 'json',
+                    displayName: 'Source',
+                    name: 'sourceMode',
+                    type: 'options',
+                    options: [
+                        {
+                            name: 'Field Name',
+                            value: 'fieldName',
+                            description: 'Use a field from the incoming item that already contains JSON data',
+                        },
+                        {
+                            name: 'Expression / Manual JSON',
+                            value: 'expression',
+                            description: 'Provide JSON directly or via an expression',
+                        },
+                    ],
+                    default: 'fieldName',
+                },
+                {
+                    displayName: 'Field Name',
+                    name: 'fieldName',
+                    type: 'string',
+                    default: 'data',
+                    description: 'Name of the field on the incoming item that holds the JSON data',
+                    displayOptions: {
+                        show: {
+                            sourceMode: ['fieldName'],
+                        },
+                    },
+                },
+                {
+                    displayName: 'JSON Value',
+                    name: 'jsonValue',
+                    type: 'string',
                     typeOptions: {
                         rows: 4,
                     },
                     required: true,
-                    default: '{}',
-                    description: 'Dönüştürülecek veriyi girin veya önceki düğüme bağlamak için bir ifade kullanın',
+                    default: '',
+                    description: 'Paste JSON or use an expression to reference previous data',
                     noDataExpression: true,
+                    displayOptions: {
+                        show: {
+                            sourceMode: ['expression'],
+                        },
+                    },
                 },
             ],
         };
@@ -136,10 +171,37 @@ class ToonFormatter {
         const returnItems = [];
         for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
             try {
-                const rawInput = this.getNodeParameter('inputJson', itemIndex);
-                const parsedInput = typeof rawInput === 'string' && rawInput.trim().length > 0
-                    ? JSON.parse(rawInput)
-                    : rawInput;
+                const sourceMode = this.getNodeParameter('sourceMode', itemIndex);
+                let rawValue;
+                if (sourceMode === 'fieldName') {
+                    const fieldName = this.getNodeParameter('fieldName', itemIndex);
+                    rawValue = items[itemIndex].json[fieldName];
+                }
+                else {
+                    rawValue = this.getNodeParameter('jsonValue', itemIndex);
+                }
+                if (rawValue === undefined) {
+                    throw new n8n_workflow_1.NodeOperationError(this.getNode(), 'No JSON data found for the configured source', {
+                        itemIndex,
+                    });
+                }
+                let parsedInput = rawValue;
+                if (typeof rawValue === 'string') {
+                    const trimmed = rawValue.trim();
+                    if (!trimmed) {
+                        throw new n8n_workflow_1.NodeOperationError(this.getNode(), 'JSON input is empty', {
+                            itemIndex,
+                        });
+                    }
+                    try {
+                        parsedInput = JSON.parse(trimmed);
+                    }
+                    catch {
+                        throw new n8n_workflow_1.NodeOperationError(this.getNode(), 'Provided value is not valid JSON', {
+                            itemIndex,
+                        });
+                    }
+                }
                 const jsonValue = normalizeJson(parsedInput);
                 const toonPayload = encodeToToon(jsonValue);
                 returnItems.push({
